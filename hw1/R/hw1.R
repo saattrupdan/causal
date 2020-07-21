@@ -74,3 +74,17 @@ graphviz.plot(dag3)
 cpdag3 <- bnlearn::cpdag(dag3)
 cpdag3
 graphviz.plot(cpdag3)
+
+# 5.3
+dag4 <- bnlearn::set.arc(dag, 'R', 'O')
+graphviz.plot(dag4)
+
+cpdag4 <- bnlearn::cpdag(dag4)
+graphviz.plot(cpdag4)
+
+# 5.4
+bnlearn::score(dag3, df)
+bnlearn::score(dag4, df)
+
+
+dag.fitted

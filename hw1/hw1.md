@@ -319,4 +319,155 @@ Using the `score` function, we can calculate the log-likelihood of the data give
 ## Question 6: Modeling and Inference using Pyro
 
 ### 6.1
+We now implement the original fitted DAG above from *3.1* into the `Pyro` framework:
 
+```python
+def survey():
+    prob_A = torch.tensor([
+        .36, # P(A = 'adult')
+        .16, # P(A = 'old')
+        .48  # P(A = 'young')
+    ])
+
+    prob_S = torch.tensor([
+        .55, # P(S = 'F')
+        .45  # P(A = 'M')
+    ])
+
+    prob_E = torch.tensor([
+        [
+            [
+                .64, # P(E = 'high' | A = 'adult', S = 'F')
+                .36  # P(E = 'uni' | A = 'adult', S = 'F')
+            ],
+            [
+                .72, # P(E = 'high' | A = 'adult', S = 'M')
+                .28  # P(E = 'uni' | A = 'adult', S = 'M')
+            ]
+        ],
+        [
+            [
+                .84, # P(E = 'high' | A = 'old', S = 'F')
+                .16  # P(E = 'uni' | A = 'old', S = 'F')
+            ],
+            [
+                .89, # P(E = 'high' | A = 'old', S = 'M')
+                .11  # P(E = 'uni' | A = 'old', S = 'M')
+            ]
+        ],
+        [
+            [
+                .16, # P(E = 'high' | A = 'young', S = 'F')
+                .84  # P(E = 'uni' | A = 'young', S = 'F')
+            ],
+            [
+                .81, # P(E = 'high' | A = 'young', S = 'M')
+                .19  # P(E = 'uni' | A = 'young', S = 'M')
+            ]
+        ]
+    ])
+
+    prob_O = torch.tensor([
+        [
+            .98, # P(O = 'emp' | E = 'high')
+            .02  # P(O = 'self' | E = 'high')
+        ],
+        [
+            .97, # P(O = 'emp' | E = 'uni')
+            .03  # P(O = 'self' | E = 'uni')
+        ]
+    ])
+
+    prob_R = torch.tensor([
+        [
+            .72, # P(R = 'big' | E = 'high')
+            .28  # P(R = 'small' | E = 'high')
+        ],
+        [
+            .94, # P(R = 'big' | E = 'uni')
+            .06  # P(R = 'small' | E = 'uni')
+        ]
+    ])
+
+    prob_T = torch.tensor([
+        [
+            [
+                .71, # P(T = 'car'   | R = 'big', O = 'emp')
+                .14, # P(T = 'other' | R = 'big', O = 'emp')
+                .15  # P(T = 'train' | R = 'big', O = 'emp')
+            ],
+            [
+                .69, # P(T = 'car'   | R = 'big', O = 'self')
+                .16, # P(T = 'other' | R = 'big', O = 'self')
+                .16  # P(T = 'train' | R = 'big', O = 'self')
+            ]
+        ],
+        [
+            [
+                .55, # P(T = 'car'   | R = 'small', O = 'emp')
+                .08, # P(T = 'other' | R = 'small', O = 'emp')
+                .38  # P(T = 'train' | R = 'small', O = 'emp')
+            ],
+            [
+                .73, # P(T = 'car'   | R = 'small', O = 'self')
+                .25, # P(T = 'other' | R = 'small', O = 'self')
+                .02  # P(T = 'train' | R = 'small', O = 'self')
+            ]
+        ]
+    ])
+
+    A = pyro.sample('A', dist.Categorical(probs = prob_A))
+    S = pyro.sample('S', dist.Categorical(probs = prob_S))
+    E = pyro.sample('E', dist.Categorical(probs = prob_E[A][S]))
+    O = pyro.sample('O', dist.Categorical(probs = prob_O[E]))
+    R = pyro.sample('R', dist.Categorical(probs = prob_R[E]))
+    T = pyro.sample('T', dist.Categorical(probs = prob_T[R][O]))
+
+    return T.float()
+```
+
+### 6.2.a
+Using the above Pyro implementation, we can start to do causal inference with the model. As an example of forward causal inference, we can predict an individual's means of travel, assuming that they have a university degree, and plot the resulting conditional distribution:
+
+```python
+# Get the random variable P(T | E = 'uni')
+conditioned_on_uni = pyro.condition(survey, {'E': tensor(1)})
+
+# Generate 10,000 samples from the conditional distribution
+samples = torch.tensor([conditioned_on_uni() for _ in range(10000)])
+
+# Plot the distribution of P(T | E = 'uni')
+plt.figure(figsize = (14, 7))
+plt.hist(samples, bins = 'auto')
+plt.xticks([0, 1, 2], ['car', 'other', 'train'])
+plt.title('P(T | E = "uni")')
+plt.xlabel('Mode of transport')
+plt.ylabel('Frequency')
+plt.show()
+```
+
+![](img/T_given_uni.png)
+
+### 6.2.b
+We can also do reverse causal inference by utilising one of the inference algorithms in `pyro`. Here we will perform the prediction of an individual's age given that we know they're self-employed and lives in a big city, i.e. $P(A | O = \text{'self'}, R = \text{'big'})$.
+
+To compute this, we will use the Importance sampling algorithm.
+
+```python
+# Perform the inference
+conditioned = pyro.condition(survey, {'O': tensor(1), 'R': tensor(0)})
+posterior = pyro.infer.Importance(conditioned, num_samples = 1000).run()
+marginal = pyro.infer.EmpiricalMarginal(posterior, 'A')
+samples = [marginal() for _ in range(1000)]
+
+# Plot the distribution of P(A | O = 'self', R = 'big')
+plt.figure(figsize = (14, 7))
+plt.hist(samples, bins = 'auto')
+plt.xticks([0, 1, 2], ['adult', 'old', 'young'])
+plt.title('P(A | O = "self", R = "big")')
+plt.xlabel('Age')
+plt.ylabel('Frequency')
+plt.show()
+```
+
+![](img/A_given_self_and_big.png)
