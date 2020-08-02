@@ -39,7 +39,7 @@ bnlearn::mb(dag, 'E')
 bnlearn::mb(dag, 'T')
 
 # 3.1
-df <- read.table('/home/saattrupdan/gitsky/causal/hw1/data/survey2.txt', header = TRUE)
+df <- read.table('../data/survey2.txt', header = TRUE)
 dag.fitted <- bnlearn::bn.fit(dag, df, method = 'bayes')
 
 # 3.2
