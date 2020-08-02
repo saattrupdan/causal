@@ -1,4 +1,4 @@
-.env/*
+**/.env/*
 **/*.Rproj.user
 **/.Rhistory
 .Rproj.user
