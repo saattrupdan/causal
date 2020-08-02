@@ -1,0 +1,12 @@
+future==0.18.2
+numpy==1.19.1
+opt-einsum==3.3.0
+pandas==1.1.0
+pkg-resources==0.0.0
+pyro-api==0.1.2
+pyro-ppl==1.4.0
+python-dateutil==2.8.1
+pytz==2020.1
+six==1.15.0
+torch==1.6.0
+tqdm==4.48.0
