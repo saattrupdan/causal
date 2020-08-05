@@ -49,17 +49,17 @@ for(args in dseps){
     dseps.nonredundant <- c(dseps.nonredundant, list(args))
   }
 }
-length(dseps.nonredundant)
+dseps.nonredundant
 
 # 1.5
 dseps.ci <- list()
 for(args in dseps){
-  indep <- ci.test(x = args$x, y = args$y, z = args$z, data = df)
+  indep <- bnlearn::ci.test(x = args$x, y = args$y, z = args$z, data = df)
   if(indep$p.value > 0.05){
     dseps.ci <- c(dseps.ci, list(args))
   }
 }
-dseps.proportion <- length(setdiff(dseps, dseps.ci)) / length(dseps)
+dseps.proportion <- length(dseps.ci) / length(dseps)
 dseps.proportion
 
 # 1.6
@@ -70,7 +70,7 @@ for(args in dseps.nonredundant){
     dseps.nonredundant.ci <- c(dseps.nonredundant.ci, list(args))
   }
 }
-dseps.nonredundant.proportion <- length(setdiff(dseps.nonredundant, dseps.nonredundant.ci)) / length(dseps.nonredundant)
+dseps.nonredundant.proportion <- length(dseps.nonredundant.ci) / length(dseps.nonredundant)
 dseps.nonredundant.proportion
 
 # 2.1
@@ -90,7 +90,7 @@ for(args in cis){
     cis.dsep <- c(cis.dsep, list(args))
   }
 }
-cis.dsep.proportion <- length(setdiff(cis, cis.dsep)) / length(cis)
+cis.dsep.proportion <- length(cis.dsep) / length(cis)
 cis.dsep.proportion
 
 # 2.3
