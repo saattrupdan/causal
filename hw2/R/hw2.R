@@ -111,6 +111,8 @@ data <- list(A = cptA, B = cptB, C = cptC)
 model <- custom.fit(net, data)
 graphviz.plot(model)
 
+model
+
 # 3.2
 rbns <- bnlearn::rbn(model, n = 1000) %>%
         dplyr::filter(B == 'on', C == 'on')
@@ -121,3 +123,7 @@ net.mutilated <- bnlearn::mutilated(net, list(B='on'))
 graphviz.plot(net.mutilated)
 
 # 3.5
+model.mutilated <- bnlearn::mutilated(model.mutilated, list(B='on'))
+rbns.mutilated <- bnlearn::rbn(model.mutilated, n = 1000) %>%
+                  dplyr::filter(C == 'on')
+nrow(rbns.mutilated %>% dplyr::filter(A == 'on')) / nrow(rbns)

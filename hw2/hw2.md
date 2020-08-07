@@ -435,7 +435,11 @@ We now calculate the following intervention, analogous to it's conditional proba
 As in 3.2, we can also estimate the probability from 3.4 by sampling the model:
 
 ```r
-asd
+> model.mutilated <- bnlearn::mutilated(model.mutilated, list(B='on'))
+> rbns.mutilated <- bnlearn::rbn(model.mutilated, n = 1000) %>%
+>                   dplyr::filter(C == 'on')
+> nrow(rbns.mutilated %>% dplyr::filter(A == 'on')) / nrow(rbns)
+[1] 0.276
 ```
 
 ## Question 4: Implement Intervention in Pyro
@@ -444,19 +448,115 @@ asd
 We can implement the model from Question 3 in Pyro as follows:
 
 ```python
-asd
+def intervention():
+
+    prob_A = torch.tensor([
+        .50, # P(A = 'on')
+        .50 # P(A = 'off')
+    ])
+
+    prob_B = torch.tensor([
+        [
+            .90, # P(B = 'on' | A = 'on')
+            .10  # P(B = 'off' | A = 'on')
+        ],
+        [
+            .20, # P(B = 'on' | A = 'off')
+            .80  # P(B = 'off' | A = 'off')
+        ]
+    ])
+
+    prob_C = torch.tensor([
+        [
+            [
+                .60, # P(C = 'on' | A = 'on', B = 'on')
+                .40  # P(C = 'off' | A = 'on', B = 'on')
+            ],
+            [
+                .01, # P(C = 'on' | A = 'on', B = 'off')
+                .99  # P(C = 'off' | A = 'on', B = 'off')
+            ]
+        ],
+        [
+            [
+                .90, # P(C = 'on' | A = 'off', B = 'on')
+                .10  # P(C = 'off' | A = 'off', B = 'on')
+            ],
+            [
+                .10, # P(C = 'on' | A = 'off', B = 'off')
+                .90  # P(C = 'off' | A = 'off', B = 'off')
+            ]
+        ]
+    ])
+
+    A = pyro.sample('A', dist.Categorical(probs = prob_A))
+    B = pyro.sample('S', dist.Categorical(probs = prob_B[A]))
+    C = pyro.sample('E', dist.Categorical(probs = prob_C[A][B]))
+
+    return C
 ```
 
 ### 4.2
 We now compute the conditional probability $P(A = \text{on} | B = \text{on}, C = \text{on})$ from 3.1 and 3.2, using Pyro:
 
 ```python
-asd
+# Create the conditional distribution
+conditioned = pyro.condition(
+    intervention, 
+    {'B': torch.tensor(0), 'C': torch.tensor(0)}
+)
+
+# Estimate the joint distribution with the Importance Sampling algorithm
+posterior = pyro.infer.Importance(conditioned, num_samples = 10000).run()
+
+# Get the marginal distribution from A
+marginal = pyro.infer.EmpiricalMarginal(posterior, 'A')
+
+# Generate samples from the marginal distribution and record how many
+# of them are 'on'
+samples = [marginal() for _ in range(10000)]
+ons = [sample for sample in samples if sample == torch.tensor(0)]
+```
+
+From `samples` and `ons` we can then find the conditional probability:
+
+```python
+>>> len(ons) / len(samples)
+0.5033
 ```
 
 ### 4.3
 Lastly, we use Pyro to also compute the interventional distribution $P(A = \text{on} | \text{do}(B = \text{on}), C = \text{on})$:
 
 ```python
-asd
+# Intervene on B
+intervened = pyro.do(
+    intervention,
+    {'B': torch.tensor(0)}
+)
+
+# Condition on C
+conditioned = pyro.condition(
+    intervention, 
+    {'C': torch.tensor(0)}
+)
+
+# Estimate the joint distribution with the Importance Sampling algorithm
+posterior = pyro.infer.Importance(conditioned, num_samples = 10000).run()
+
+# Get the marginal distribution from A
+marginal = pyro.infer.EmpiricalMarginal(posterior, 'A')
+
+# Generate samples from the marginal distribution and record how many
+# of them are 'on'
+samples = [marginal() for _ in range(10000)]
+ons = [sample for sample in samples if sample == torch.tensor(0)]
 ```
+
+From `samples` and `ons` we can then find the conditional probability:
+
+```python
+>>> len(ons) / len(samples)
+0.5096
+```
+
