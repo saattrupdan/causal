@@ -47,8 +47,8 @@ def intervention():
     ])
 
     A = pyro.sample('A', dist.Categorical(probs = prob_A))
-    B = pyro.sample('S', dist.Categorical(probs = prob_B[A]))
-    C = pyro.sample('E', dist.Categorical(probs = prob_C[A][B]))
+    B = pyro.sample('B', dist.Categorical(probs = prob_B[A]))
+    C = pyro.sample('C', dist.Categorical(probs = prob_C[A][B]))
 
     return C
 
@@ -59,8 +59,8 @@ if __name__ == '__main__':
         {'B': torch.tensor(0)}
     )
     conditioned = pyro.condition(
-        intervened, 
-        {'C': torch.tensor(0)}
+        intervention, 
+        {'B': torch.tensor(0), 'C': torch.tensor(0)}
     )
     posterior = pyro.infer.Importance(conditioned, num_samples = 10000).run()
     marginal = pyro.infer.EmpiricalMarginal(posterior, 'A')
@@ -73,7 +73,7 @@ if __name__ == '__main__':
     plt.figure(figsize = (14, 7))
     plt.hist(samples, bins = 'auto')
     plt.xticks([0, 1], ['on', 'off'])
-    plt.title('P(A | B = "on", C = "on")')
+    plt.title('P(A | do(B = "on"), C = "on")')
     plt.xlabel('Age')
     plt.ylabel('Frequency')
     plt.show()

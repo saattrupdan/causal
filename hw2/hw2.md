@@ -399,19 +399,36 @@ We now calculate the following conditional probability, using (the conditional v
 \begin{align}
   &P(A = \text{on} | B = \text{on}, C = \text{on}) \\
   &= \frac{P(C = \text{on} | B = \text{on}, A = \text{on})P(A = \text{on} | B = \text{on})}{P(C = \text{on} | B = \text{on})} \\
-  &= \frac{0.6\cdot 0.5}{P(C = \text{on} | B = \text{on}, A = \text{on})P(A = \text{on}) + P(C = \text{on} | B = \text{on}, A = \text{off})P(A = \text{off})} \\
-  &= \frac{0.6\cdot 0.5}{0.6\cdot 0.5 + 0.9\cdot 0.5} \\
-  &= 0.4
+  &= \frac{P(C = \text{on} | B = \text{on}, A = \text{on})P(A = \text{on} | B = \text{on})}{P(C = \text{on} | B = \text{on}, A = \text{on})P(A = \text{on} | B = \text{on}) + P(C = \text{on} | B = \text{on}, A = \text{off})P(A = \text{off} | B = \text{on})}
+\end{align}
+
+We start by calculating $P(A = \text{on} | B = \text{on})$, using Bayes' Rule again:
+
+\begin{align}
+  &P(A = \text{on} | B = \text{on}) \\
+  &= \frac{P(B = \text{on} | A = \text{on})P(A = \text{on})}{P(B = \text{on})} \\
+  &= \frac{P(B = \text{on} | A = \text{on})P(A = \text{on})}{P(B = \text{on} | A = \text{on})P(A = \text{on}) + P(B = \text{on} | A = \text{off})P(A = \text{off})} \\
+  &= \frac{0.9\cdot 0.5}{0.9\cdot 0.5 + 0.2\cdot 0.5} \\
+  &\approx 0.82
+\end{align}
+
+From this we calculate the desired conditional probability:
+
+\begin{align}
+  &P(A = \text{on} | B = \text{on}, C = \text{on}) \\
+  &= \frac{P(C = \text{on} | B = \text{on}, A = \text{on})P(A = \text{on} | B = \text{on})}{P(C = \text{on} | B = \text{on}, A = \text{on})P(A = \text{on} | B = \text{on}) + P(C = \text{on} | B = \text{on}, A = \text{off})P(A = \text{off} | B = \text{on})} \\
+  &\approx \frac{0.6\cdot 0.82}{0.6\cdot 0.82 + 0.9\cdot (1 - 0.82)} \\
+  &\approx 0.75
 \end{align}
 
 ### 3.2
 We can estimate the above conditional probability by sampling the model, using the `rbn` function in `bnlearn`:
 
 ```r
-> rbns <- bnlearn::rbn(model, n = 1000) %>%
+> rbns <- bnlearn::rbn(model, n = 100000) %>%
 >         dplyr::filter(B == 'on', C == 'on')
 > nrow(rbns %>% dplyr::filter(A == 'on')) / nrow(rbns)
-[1] 0.7833333
+[1] 0.749493
 ```
 
 ### 3.3
@@ -425,22 +442,40 @@ graphviz.plot(net.mutilated)
 ![](img/mutilated.png)
 
 ### 3.4
-We now calculate the following intervention, analogous to it's conditional probability statement from 3.1:
+We now calculate the following intervention, analogous to its conditional probability statement from 3.1. We start by applying the conditional Bayes' Rule as before:
 
 \begin{align}
-  asd
+  &P(A = \text{on} | \text{do}(B = \text{on}), C = \text{on}) \\
+  &= \frac{P(C = \text{on} | \text{do}(B = \text{on}), A = \text{on})P(A = \text{on} | \text{do}(B = \text{on}))}{P(C = \text{on} | \text{do}(B = \text{on}))} \\
+  &= \frac{P(C = \text{on} | \text{do}(B = \text{on}), A = \text{on})P(A = \text{on} | \text{do}(B = \text{on}))}{P(C = \text{on} | \text{do}(B = \text{on}), A = \text{on})P(A = \text{on}) + P(C = \text{on} | \text{do}(B = \text{on}), A = \text{off})P(A = \text{off})}
+\end{align}
+
+We now need to change the expression into one without any do-statements.
+
+  - The third rule of do-calculus (deletion of actions) allows us to conclude that $P(A = \text{on} | \text{do}(B = \text{on}))$ is equal to $P(A = \text{on})$, which is applicable since $A$ is d-separated by $B$ in the mutilated graph in which all ingoing edges to $B$ have been removed.
+  - The second rule of do-calculus (action/observation exchange) gives us that we can exchange the do-expression in $P(C = \text{on} | \text{do}(B = \text{on}), A = \text{on})$ with its conditional counterpart; the same thing is the case where $A = \text{off}$.
+
+These two lemmata then gives us the following:
+
+\begin{align}
+  &P(A = \text{on} | \text{do}(B = \text{on}), C = \text{on}) \\
+  &= \frac{P(C = \text{on} | B = \text{on}, A = \text{on})P(A = \text{on})}{P(C = \text{on} | B = \text{on}, A = \text{on})P(A = \text{on}) + P(C = \text{on} | B = \text{on}, A = \text{off})P(A = \text{off})} \\
+  &= \frac{0.6\cdot 0.5}{0.6\cdot 0.5 + 0.9\cdot 0.5} \\
+  &= 0.4
 \end{align}
 
 ### 3.5
 As in 3.2, we can also estimate the probability from 3.4 by sampling the model:
 
 ```r
-> model.mutilated <- bnlearn::mutilated(model.mutilated, list(B='on'))
-> rbns.mutilated <- bnlearn::rbn(model.mutilated, n = 1000) %>%
->                   dplyr::filter(C == 'on')
-> nrow(rbns.mutilated %>% dplyr::filter(A == 'on')) / nrow(rbns)
-[1] 0.276
+> model.mutilated <- bnlearn::mutilated(model, list(B='on'))
+> rbns.mutilated <- bnlearn::rbn(model.mutilated, n = 100000) %>%
+                    dplyr::filter(C == 'on')
+> nrow(rbns.mutilated %>% dplyr::filter(A == 'on')) / nrow(rbns.mutilated)
+[1] 0.400608
 ```
+
+We see that this is in agreement with the analytical result from 3.4.
 
 ## Question 4: Implement Intervention in Pyro
 
@@ -490,8 +525,8 @@ def intervention():
     ])
 
     A = pyro.sample('A', dist.Categorical(probs = prob_A))
-    B = pyro.sample('S', dist.Categorical(probs = prob_B[A]))
-    C = pyro.sample('E', dist.Categorical(probs = prob_C[A][B]))
+    B = pyro.sample('B', dist.Categorical(probs = prob_B[A]))
+    C = pyro.sample('C', dist.Categorical(probs = prob_C[A][B]))
 
     return C
 ```
@@ -522,7 +557,7 @@ From `samples` and `ons` we can then find the conditional probability:
 
 ```python
 >>> len(ons) / len(samples)
-0.5033
+0.742
 ```
 
 ### 4.3
@@ -537,7 +572,7 @@ intervened = pyro.do(
 
 # Condition on C
 conditioned = pyro.condition(
-    intervention, 
+    intervened, 
     {'C': torch.tensor(0)}
 )
 
@@ -557,6 +592,6 @@ From `samples` and `ons` we can then find the conditional probability:
 
 ```python
 >>> len(ons) / len(samples)
-0.5096
+0.4051
 ```
 
